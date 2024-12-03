@@ -56,13 +56,6 @@ const AudioPlayer: React.FC<{
     });
     _sound.on("play", () => {
       if (onPlay) onPlay(_sound);
-      requestAnimationFrame(function update() {
-        if (!_sound.playing()) return;
-        const currentTime = _sound.seek() as number;
-        setPlaybackTime(currentTime - totalOffset);
-
-        requestAnimationFrame(update);
-      });
     });
     _sound.on("stop", () => {
       setPlaybackTime(0);
@@ -86,21 +79,23 @@ const AudioPlayer: React.FC<{
     if (offset !== undefined) setTotalOffset(offset);
   }, [offset]);
 
-  const seekHandler = useCallback(
-    (_, v: number | number[]) => {
-      if (sound) {
-        setPlaybackTime(v as number);
-        if (sound.playing()) {
-          sound.pause();
-          sound.seek(totalOffset + (v as number));
-          sound.play();
-        } else {
-          sound.seek(totalOffset + (v as number));
-        }
+  const seekHandler = (_, v: number | number[]) => {
+    if (sound) {
+      sound.seek(totalOffset + (v as number));
+      setPlaybackTime(v as number);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (sound && isPlay && sound.playing()) {
+        const currentTime = sound.seek() as number;
+        setPlaybackTime(currentTime - totalOffset);
       }
-    },
-    [sound, totalOffset]
-  );
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isPlay, sound, totalOffset]);
 
   const formatTime = useCallback((time) => {
     const minutes = Math.floor(time / 60) || 0;
